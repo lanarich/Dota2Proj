@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+*.log
+
+# DVC
+.dvc/
+
+# IDE
+.vscode/
+.idea/
+
+# Python virtual env
+venv/
+*.venv/
+
+# mac things
+.DS_Store
