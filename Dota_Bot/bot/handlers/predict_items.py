@@ -74,9 +74,10 @@ async def start_predict_items(message: Message, state: FSMContext):
 
 
 @router.message(PredictionState.predItems)
-async def predict_items(message: Message, bot: Bot):
+async def predict_items(message: Message, bot: Bot, state: FSMContext):
     document = await bot.download(message.document)
     pred = predict_csv_file(document)
     text = f'🌟 Данные предсказаны! 🌟\n\n' \
            f'Вероятность победы сил Света: {pred}\n'
     await message.answer(text, reply_markup = predict_item_keyboard)
+    await state.clear()
