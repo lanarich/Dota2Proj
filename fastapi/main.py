@@ -13,7 +13,7 @@ def root():
 
 
 @app.post('/predict_winer')
-def predict_winer():
+def predict_winner():
     pass
 
 
