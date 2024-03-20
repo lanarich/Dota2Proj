@@ -43,6 +43,7 @@ def dataframe_preprocessing(dataframe, predict_items=False):
     dataframe[columns_with_leaver_status] = (dataframe[columns_with_leaver_status] != 'NONE').astype(int)
     return dataframe
 
+
 def predict_csv_file(file_name):
     best_model = joblib.load('random_forest_calibrated.h5')
     model_features = best_model.feature_names_in_
@@ -52,6 +53,14 @@ def predict_csv_file(file_name):
     pred = best_model.predict_proba(converted_df)[:, 1]
     return pred
 
+
+def predict_dataframe(dataframe):
+    best_model = joblib.load('random_forest_calibrated.h5')
+    model_features = best_model.feature_names_in_
+    pred_df = dataframe[model_features]
+    converted_df = dataframe_preprocessing(pred_df, True)
+    pred = best_model.predict_proba(converted_df)[:, 1]
+    return pred
 
 
 def get_info_stratz(match_id):
@@ -82,4 +91,3 @@ def get_info_stratz(match_id):
     data_dict['radiantNetworthLeads'] = data_dict['radiantNetworthLeads'][-1]
     data_dict['radiantExperienceLeads'] = data_dict['radiantExperienceLeads'][-1]
     return pd.DataFrame([data_dict])
-

@@ -16,7 +16,6 @@ def create_mongo_connection():
     except pymongo.errors.ServerSelectionTimeoutError as err:
         print(err)
 
-
 mongo_client, mongo_db = create_mongo_connection()
 
 full_match = mongo_db.test_match_coll
@@ -29,7 +28,7 @@ headers = {"Authorization": f"Bearer {local_stratz_token}"}
 
 
 def create_query(match_id):
-    my_file = open("graphql_parse_data.txt", "r")
+    my_file = open("../graphql_parse_data.txt", "r")
     parsing_string = my_file.read()
     my_file.close()
     graph_query = {'query': '''{
@@ -88,21 +87,16 @@ async def stratz_match_request(match_id):
 
 
 
-def check_if_match_already_in_db(match_id):
+def check_match_presence_in_db(match_id):
     doc = full_match.find_one({"_id": match_id})
     return doc
 
 
-async def main():
+async def get_match_data(match_id):
     # получаем айдишники в первый раз
-    match_id = 7562028420
-    doc = check_if_match_already_in_db(match_id)
+    doc = check_match_presence_in_db(match_id)
     if doc is None:
         match_data = await stratz_match_request(match_id)
         return match_data
     else:
         return doc
-
-
-if __name__ == '__main__':
-    asyncio.run(main())

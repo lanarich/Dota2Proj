@@ -1,7 +1,9 @@
 import asyncio
 import json
 
-from Dota2Proj.fastapi.get_graphql_match import create_mongo_connection, main
+import pandas as pd
+
+from Dota2Proj.fastapi.api_requests.get_graphql_match import get_match_data, create_mongo_connection
 
 mongo_client, mongo_db = create_mongo_connection()
 
@@ -46,7 +48,7 @@ def convert_match_data_into_df(current_match_data):
     radiantNetworthLeads = get_collection_attr(current_match_data, 'radiantNetworthLeads')
 
     #  читаем постройки и заполняем единицами, потому что сначала они все целы
-    tower_utils = utility_read_from_json('creeps_buildings.json')
+    tower_utils = utility_read_from_json('../creeps_buildings.json')
     for npc in tower_utils:
         df_dict[npc['name']] = 1
 
@@ -158,14 +160,27 @@ def single_player_data(player_dict, minute, player, side, pos):
     # player_dict[side + pos + '_neutral0'] = 0
 
 
-async def check_for_presence_in_db(match_id):
+def check_for_presence_in_db(match_id):
     # получаем айдишники в первый раз
-    doc = dataframe_match_collection.find_one({"id": match_id})
-    return doc
+    doc = dataframe_match_collection.find({"id": match_id})
+    return list(doc)
+
+
+def get_decomposed_match_data(match_id):
+    doc = check_for_presence_in_db(match_id)
+    if len(doc) < 1:
+        single_match = asyncio.run(get_match_data(match_id))
+        return convert_match_data_into_df(single_match)
+    else:
+        return doc
+
+
+def create_dataframe(converted_match_data):
+    match_df = pd.DataFrame(data=converted_match_data)
+    print(match_df)
+    return match_df
 
 
 if __name__ == '__main__':
-    match_data = asyncio.run(main())
-    doc = check_for_presence_in_db(7562028420)
-    if doc is None:
-        match_data = convert_match_data_into_df(match_data)
+    converted_match = get_decomposed_match_data(7645657880)
+    df = create_dataframe(converted_match)
