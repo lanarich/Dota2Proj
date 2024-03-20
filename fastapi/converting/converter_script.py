@@ -76,9 +76,9 @@ def convert_match_data_into_df(current_match_data):
         get_tower_barracks_destroy_dict(get_collection_attr(current_match_data, 'towerDeaths'),
                                         minute, df_dict, tower_utils)
         single_match_decomposition.append(obj_dict)
-        update = {"$set": obj_dict}
+        #update = {"$set": obj_dict}
 
-        result = dataframe_match_collection.update_one(obj_dict, update, upsert=True)
+        #result = dataframe_match_collection.update_one(obj_dict, update, upsert=True)
 
     return single_match_decomposition
 
@@ -179,8 +179,3 @@ def create_dataframe(converted_match_data):
     match_df = pd.DataFrame(data=converted_match_data)
     print(match_df)
     return match_df
-
-
-if __name__ == '__main__':
-    converted_match = get_decomposed_match_data(7645657880)
-    df = create_dataframe(converted_match)

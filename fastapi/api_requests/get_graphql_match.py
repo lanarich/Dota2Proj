@@ -16,6 +16,7 @@ def create_mongo_connection():
     except pymongo.errors.ServerSelectionTimeoutError as err:
         print(err)
 
+
 mongo_client, mongo_db = create_mongo_connection()
 
 full_match = mongo_db.test_match_coll
@@ -85,6 +86,29 @@ async def stratz_match_request(match_id):
     return match
 
 
+async def stratz_match_request_wout_db(match_id):
+    start = datetime.datetime.now()
+    print(start, ": Началась обработка батча")
+    stratz_query = create_query(match_id)
+    # дожидаемся запросов
+    match = await fetch_stratz(stratz_query)
+    # проверяем данные
+    if match is None:
+        return None
+    # проверяем конкретный матч
+    if match['data']['match'] is None:
+        print(datetime.datetime.now(), ': Match is None')
+        return None
+    else:
+        # проверяем матч на то что обработан стратзом
+        if match['data']['match'].get('parsedDateTime') is None:
+            print(datetime.datetime.now(), ': Match[id]: ', match['data']['match'].get('id'),
+                  'not parsed by Stratz yet')
+            return None
+
+    end = datetime.datetime.now()
+    print("Матч успешно добавлен в БД, \nВремя добавления составило: ", end - start)
+    return match
 
 
 def check_match_presence_in_db(match_id):
