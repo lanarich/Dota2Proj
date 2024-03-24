@@ -1,8 +1,9 @@
 import asyncio
 import json
+import os
 
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import pandas as pd
 
 from converting.converter_script import convert_match_data_into_df, create_dataframe
@@ -12,6 +13,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 import matplotlib.pyplot as plt
 from io import BytesIO
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTasks
+
 
 app = FastAPI(title='DOTA 2 APP')
 
@@ -37,12 +40,26 @@ def predict_winner(match_id):  # тут он должен принимать у�
 
 
 @app.get('/get_match_info/{match_id}')
-def get_info(match_id):
-    single_match = asyncio.run(stratz_match_request_wout_db(match_id))
-    filename = str(match_id)+'.json'
-    with open(filename, 'w') as fp:
-        json.dump(single_match, fp)
-        return FileResponse(filename)
+async def get_info(match_id: int, background_tasks: BackgroundTasks):
+    try:
+        match_data = await stratz_match_request_wout_db(match_id)
+        if match_data is None:
+            raise HTTPException(status_code=404, detail="Match data not found or not parsed by Stratz yet")
+
+        filename = f'{match_id}.json'
+        
+        with open(filename, 'w') as file:
+            json.dump(match_data, file)
+
+        background_tasks.add_task(os.remove, filename)
+
+        # Возвращаем файл
+        return FileResponse(path=filename, filename=filename, media_type='application/json')
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.get('/get_match_dataframe/{match_id}')
@@ -93,7 +110,7 @@ def get_exp_graph(match_id):  # тут он должен принимать уж
     return StreamingResponse(buf, media_type="image/png")
 
 
-@app.post('/heroes_stats_in_match/{match_id}')
+@app.get('/heroes_stats_in_match/{match_id}')
 def get_heroes_stats(match_id):
     '''
     Метод возвращает статисттику игроков в конкретном 
@@ -101,7 +118,8 @@ def get_heroes_stats(match_id):
 
     В эндпоинт следует передать айди матча, например 5721798888 
     '''
-    local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiZDVlZWFiMWUtMDlmNS00OTc2LWJiOGEtZmY2NjhlOGU5MDYyIiwiU3RlYW1JZCI6IjM0MTI3NDA0MCIsIm5iZiI6MTY5Nzk2NTIxMiwiZXhwIjoxNzI5NTAxMjEyLCJpYXQiOjE2OTc5NjUyMTIsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.NBpwwl-RBlHLvPr3o1UuzFbI5NZFU7zJWSKKk_1wxvM"
+    local_stratz_token = os.getenv('STRATZ_TOKEN')
+    #local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiZDVlZWFiMWUtMDlmNS00OTc2LWJiOGEtZmY2NjhlOGU5MDYyIiwiU3RlYW1JZCI6IjM0MTI3NDA0MCIsIm5iZiI6MTY5Nzk2NTIxMiwiZXhwIjoxNzI5NTAxMjEyLCJpYXQiOjE2OTc5NjUyMTIsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.NBpwwl-RBlHLvPr3o1UuzFbI5NZFU7zJWSKKk_1wxvM"
 
     url = 'https://api.stratz.com/graphql'
 
@@ -157,7 +175,8 @@ def get_heroes_winrate(hero:str):
     Необходимо ввести имя героя.
     Например mars, axe, anti_mage
     '''
-    local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiZDVlZWFiMWUtMDlmNS00OTc2LWJiOGEtZmY2NjhlOGU5MDYyIiwiU3RlYW1JZCI6IjM0MTI3NDA0MCIsIm5iZiI6MTY5Nzk2NTIxMiwiZXhwIjoxNzI5NTAxMjEyLCJpYXQiOjE2OTc5NjUyMTIsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.NBpwwl-RBlHLvPr3o1UuzFbI5NZFU7zJWSKKk_1wxvM"
+    local_stratz_token = os.getenv('STRATZ_TOKEN')
+    #local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiZDVlZWFiMWUtMDlmNS00OTc2LWJiOGEtZmY2NjhlOGU5MDYyIiwiU3RlYW1JZCI6IjM0MTI3NDA0MCIsIm5iZiI6MTY5Nzk2NTIxMiwiZXhwIjoxNzI5NTAxMjEyLCJpYXQiOjE2OTc5NjUyMTIsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.NBpwwl-RBlHLvPr3o1UuzFbI5NZFU7zJWSKKk_1wxvM"
 
     url = 'https://api.stratz.com/graphql'
 

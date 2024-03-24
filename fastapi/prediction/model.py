@@ -1,8 +1,6 @@
 import pandas as pd
-import numpy as np
 import joblib
-import requests
-import json
+
 
 columns_for_drop = ['_id', 'dire_POSITION_2_id', 'radiant_POSITION_4_id', 'radiant_POSITION_1_id',
                     'radiant_POSITION_2_position', 'startDateTime', 'radiant_POSITION_2_id', 'radiant_POSITION_5_id',
@@ -61,33 +59,3 @@ def predict_dataframe(dataframe):
     converted_df = dataframe_preprocessing(pred_df, True)
     pred = best_model.predict_proba(converted_df)[:, 1]
     return pred
-
-
-def get_info_stratz(match_id):
-    url = 'https://api.stratz.com/graphql'
-    api_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiMzVlZDA4NjYtNGVhOS00MDZhLTk0YWItNmFkMjQwMjgwZWNjIiwiU3RlYW1JZCI6IjE2NzM1MTc0MiIsIm5iZiI6MTY5NzcyNjAwOSwiZXhwIjoxNzI5MjYyMDA5LCJpYXQiOjE2OTc3MjYwMDksImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.1y16eybJDLasnZBFT75d0q9QDdNsPwsV1v_8vaC-oyo'
-    headers = {"Authorization": f"Bearer {api_token}"}
-    graphql_query = f"""
-    {{
-        match(id: {match_id}){{
-            id
-            didRadiantWin
-            firstBloodTime
-            gameMode
-            regionId
-            gameVersionId
-            radiantKills
-            direKills
-            radiantNetworthLeads
-            radiantExperienceLeads
-        }}     
-    }}
-    """
-    data = {'query': graphql_query}
-    response = requests.post(url, json=data, headers=headers)
-    data_dict = json.loads(response.content)['data']['match']
-    data_dict['radiantKills'] = np.sum(data_dict['radiantKills'])
-    data_dict['direKills'] = np.sum(data_dict['direKills'])
-    data_dict['radiantNetworthLeads'] = data_dict['radiantNetworthLeads'][-1]
-    data_dict['radiantExperienceLeads'] = data_dict['radiantExperienceLeads'][-1]
-    return pd.DataFrame([data_dict])
