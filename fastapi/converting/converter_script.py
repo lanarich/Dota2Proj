@@ -3,7 +3,7 @@ import json
 
 import pandas as pd
 
-from Dota2Proj.fastapi.api_requests.get_graphql_match import get_match_data, create_mongo_connection
+from api_requests.get_graphql_match import get_match_data, create_mongo_connection
 
 mongo_client, mongo_db = create_mongo_connection()
 
