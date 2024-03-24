@@ -3,6 +3,7 @@ import datetime
 import json
 import os
 
+import matplotlib
 import requests
 from fastapi import FastAPI, HTTPException
 import pandas as pd
@@ -12,9 +13,14 @@ from api_requests.get_graphql_match import get_match_data, stratz_match_request_
 from prediction.model import predict_dataframe
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 import matplotlib.pyplot as plt
+matplotlib.use('agg')
 from io import BytesIO
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTasks
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from redis import asyncio as aioredis
+from fastapi_cache.decorator import cache
 
 app = FastAPI(title='DOTA 2 APP')
 
@@ -31,6 +37,7 @@ def get_decomposed_match_data_wout_db(match_id):
 
 
 @app.get('/predict_completed/{match_id}')
+@cache(expire=60)
 def predict_winner(match_id):  # тут он должен принимать уже датафрейм
     start = datetime.datetime.now()
     print(start, "| info | начало | endpoint: {predict_completed} | предсказание победы | match_id : "
@@ -47,7 +54,7 @@ def predict_winner(match_id):  # тут он должен принимать у�
     except Exception as e:
         end = datetime.datetime.now()
         print(end, "| error | конец | endpoint: {predict_completed} | предсказание победы | match_id : "
-              + str(match_id) + str(e))
+              + str(match_id))
         raise HTTPException(status_code=404, detail="Troubles with getting match info")
 
 
@@ -178,8 +185,7 @@ def get_heroes_stats(match_id):
     print(start, "| info | начало | endpoint: {heroes_stats_in_match} | статистика по герою в матче | match_id : "
           + str(match_id))
     try:
-        local_stratz_token = os.getenv('STRATZ_TOKEN')
-        # local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiZDVlZWFiMWUtMDlmNS00OTc2LWJiOGEtZmY2NjhlOGU5MDYyIiwiU3RlYW1JZCI6IjM0MTI3NDA0MCIsIm5iZiI6MTY5Nzk2NTIxMiwiZXhwIjoxNzI5NTAxMjEyLCJpYXQiOjE2OTc5NjUyMTIsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.NBpwwl-RBlHLvPr3o1UuzFbI5NZFU7zJWSKKk_1wxvM"
+        local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiZDVlZWFiMWUtMDlmNS00OTc2LWJiOGEtZmY2NjhlOGU5MDYyIiwiU3RlYW1JZCI6IjM0MTI3NDA0MCIsIm5iZiI6MTY5Nzk2NTIxMiwiZXhwIjoxNzI5NTAxMjEyLCJpYXQiOjE2OTc5NjUyMTIsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.NBpwwl-RBlHLvPr3o1UuzFbI5NZFU7zJWSKKk_1wxvM"
 
         url = 'https://api.stratz.com/graphql'
 
@@ -224,12 +230,14 @@ def get_heroes_stats(match_id):
         end = datetime.datetime.now()
         print(end, "| info | конец | endpoint: {heroes_stats_in_match} | график опыта по матчу | match_id : "
               + str(match_id))
-        return StreamingResponse(buf, media_type="image/png")
     except Exception as e:
         end = datetime.datetime.now()
         print(end, "| error | конец | endpoint: {heroes_stats_in_match} | статистика по герою в матче | "
                    "match_id : " + str(match_id) + str(e))
         raise HTTPException(status_code=404, detail="Troubles with getting match info")
+    else:
+        return StreamingResponse(buf, media_type="image/png")
+
 
 @app.get('/heroes_stats/{hero}')
 def get_heroes_winrate(hero: str):
@@ -242,15 +250,13 @@ def get_heroes_winrate(hero: str):
     start = datetime.datetime.now()
     print(start, "| info | начало | endpoint: {heroes_stats} | статистика по герою в матче | hero_name : "
           + str(hero))
-    try:
-        local_stratz_token = os.getenv('STRATZ_TOKEN')
-        # local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiZDVlZWFiMWUtMDlmNS00OTc2LWJiOGEtZmY2NjhlOGU5MDYyIiwiU3RlYW1JZCI6IjM0MTI3NDA0MCIsIm5iZiI6MTY5Nzk2NTIxMiwiZXhwIjoxNzI5NTAxMjEyLCJpYXQiOjE2OTc5NjUyMTIsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.NBpwwl-RBlHLvPr3o1UuzFbI5NZFU7zJWSKKk_1wxvM"
+    local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiZDVlZWFiMWUtMDlmNS00OTc2LWJiOGEtZmY2NjhlOGU5MDYyIiwiU3RlYW1JZCI6IjM0MTI3NDA0MCIsIm5iZiI6MTY5Nzk2NTIxMiwiZXhwIjoxNzI5NTAxMjEyLCJpYXQiOjE2OTc5NjUyMTIsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.NBpwwl-RBlHLvPr3o1UuzFbI5NZFU7zJWSKKk_1wxvM"
 
-        url = 'https://api.stratz.com/graphql'
+    url = 'https://api.stratz.com/graphql'
 
-        headers = {"Authorization": f"Bearer {local_stratz_token}"}
+    headers = {"Authorization": f"Bearer {local_stratz_token}"}
 
-        query1 = ''' 
+    query1 = ''' 
                     {
                     constants{
                         heroes{
@@ -263,7 +269,7 @@ def get_heroes_winrate(hero: str):
     
                     '''
 
-        query2 = ''' 
+    query2 = ''' 
                     {
                     heroStats{
                         winGameVersion (gameModeIds:ALL_PICK_RANKED){
@@ -277,38 +283,39 @@ def get_heroes_winrate(hero: str):
     
     
                     '''
-        data1 = {'query': query1}
-        response1 = requests.post(url, json=data1, headers=headers)
-        d = response1.json()['data']['constants']['heroes']
-        names = pd.DataFrame(d)
+    data1 = {'query': query1}
+    response1 = requests.post(url, json=data1, headers=headers)
+    d = response1.json()['data']['constants']['heroes']
+    names = pd.DataFrame(d)
 
-        data2 = {'query': query2}
-        response2 = requests.post(url, json=data2, headers=headers)
-        d1 = response2.json()['data']['heroStats']['winGameVersion']
-        a = pd.DataFrame(d1)
-        a = a[a.gameVersionId == 170]
-        a['winRate'] = round(a.winCount / a.matchCount, 2)
+    data2 = {'query': query2}
+    response2 = requests.post(url, json=data2, headers=headers)
+    d1 = response2.json()['data']['heroStats']['winGameVersion']
+    a = pd.DataFrame(d1)
+    a = a[a.gameVersionId == 170]
+    a['winRate'] = round(a.winCount / a.matchCount, 2)
 
-        a = a.merge(names, how='inner', left_on='heroId', right_on='id')
-        a = a[['shortName', 'matchCount', 'winCount', 'winRate']]
-        df = a[a.shortName == hero]
+    a = a.merge(names, how='inner', left_on='heroId', right_on='id')
+    a = a[['shortName', 'matchCount', 'winCount', 'winRate']]
+    df = a[a.shortName == hero]
 
-        plt.figure(figsize=(8, 6))
-        ax = plt.gca()
-        ax.axis('off')
-        plt.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center', colLoc='center')
-        plt.show()
+    plt.figure(figsize=(8, 6))
+    ax = plt.gca()
+    ax.axis('off')
+    plt.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center', colLoc='center')
+    plt.show()
 
-        buf = BytesIO()
-        plt.savefig(buf, format='png')
-        plt.close()
-        buf.seek(0)
-        end = datetime.datetime.now()
-        print(end, "| info | конец | endpoint: {heroes_stats} | статистика по герою | hero_name : "
-              + hero)
-        return StreamingResponse(buf, media_type="image/png")
-    except Exception as e:
-        end = datetime.datetime.now()
-        print(end, "| error | конец | endpoint: {heroes_stats} | статистика по герою | "
-                   "hero_name : " + hero + str(e))
-        raise HTTPException(status_code=404, detail="Troubles with getting heroes_stats")
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    end = datetime.datetime.now()
+    print(end, "| info | конец | endpoint: {heroes_stats} | статистика по герою | hero_name : "
+          + hero)
+    return StreamingResponse(buf, media_type="image/png")
+
+
+@app.on_event("startup")
+async def startup_event():
+    redis = aioredis.from_url("redis://localhost")
+    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")

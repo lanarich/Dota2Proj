@@ -23,8 +23,7 @@ mongo_client, mongo_db = create_mongo_connection()
 
 full_match = mongo_db.test_match_coll
 
-local_stratz_token = os.getenv('STRATZ_TOKEN')
-# local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiYjJjNjQyM2EtZjlmNS00YmI1LWI2MmUtOWRiYzAyZDc2YzQ5IiwiU3RlYW1JZCI6IjM2NzY1MzgzNCIsIm5iZiI6MTY5OTk3MjM5MCwiZXhwIjoxNzMxNTA4MzkwLCJpYXQiOjE2OTk5NzIzOTAsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.-8nipaADxb1dGUcyKm9aEKtAcE9MS_MVY0khHC3ZhfE"
+local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiYjJjNjQyM2EtZjlmNS00YmI1LWI2MmUtOWRiYzAyZDc2YzQ5IiwiU3RlYW1JZCI6IjM2NzY1MzgzNCIsIm5iZiI6MTY5OTk3MjM5MCwiZXhwIjoxNzMxNTA4MzkwLCJpYXQiOjE2OTk5NzIzOTAsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.-8nipaADxb1dGUcyKm9aEKtAcE9MS_MVY0khHC3ZhfE"
 
 url = 'https://api.stratz.com/graphql'
 
@@ -90,9 +89,8 @@ async def stratz_match_request(match_id):
 
 
 async def stratz_match_request_wout_db(match_id):
-    start = datetime.datetime.now()
-    print(start, "| info | начало | обработка stratz | match_id : " + str(match_id))
-    try:
+        start = datetime.datetime.now()
+        print(start, "| info | начало | обработка stratz | match_id : " + str(match_id))
         stratz_query = create_query(match_id)
         # дожидаемся запросов
         match = await fetch_stratz(stratz_query)
@@ -118,8 +116,7 @@ async def stratz_match_request_wout_db(match_id):
               "| info | конец | обработка stratz | match_id : " + str(match_id) + "| match "
                                                                                   "parsed successfully")
         return match
-    except Exception as e:
-        print(e)
+
 
 
 def check_match_presence_in_db(match_id):
