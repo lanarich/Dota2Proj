@@ -1,14 +1,17 @@
 import asyncio
+import json
+
 import requests
 from fastapi import FastAPI
 import pandas as pd
 
-from converting.converter_script import convert_match_data_into_df
+from converting.converter_script import convert_match_data_into_df, create_dataframe
 from api_requests.get_graphql_match import get_match_data, stratz_match_request_wout_db
 from prediction.model import predict_dataframe
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 import matplotlib.pyplot as plt
 from io import BytesIO
+from fastapi.responses import FileResponse
 
 app = FastAPI(title='DOTA 2 APP')
 
@@ -20,14 +23,15 @@ def root():
 
 def get_decomposed_match_data_wout_db(match_id):
     single_match = asyncio.run(stratz_match_request_wout_db(match_id))
-    return convert_match_data_into_df(single_match)
+    match_data = convert_match_data_into_df(single_match)
+    return create_dataframe(match_data)
 
 
 @app.get('/predict_completed/{match_id}')
 def predict_winner(match_id):  # тут он должен принимать уже датафрейм
-    game = get_decomposed_match_data_wout_db(match_id)
-    pred = predict_dataframe('for_prediction.csv')
-    pred_df = pd.DataFrame({'Внутригровая минута': game['currentMinute'], 'Вероятность победы света': pred})
+    game_df = get_decomposed_match_data_wout_db(match_id)
+    pred = predict_dataframe(game_df)
+    pred_df = pd.DataFrame({'Внутригровая минута': game_df['currentMinute'], 'Вероятность победы света': pred})
     html_content = pred_df.sort_values(by=['Внутригровая минута']).reset_index(drop=True).to_html()
     return HTMLResponse(content=html_content)
 
@@ -35,7 +39,10 @@ def predict_winner(match_id):  # тут он должен принимать у�
 @app.get('/get_match_info/{match_id}')
 def get_info(match_id):
     single_match = asyncio.run(stratz_match_request_wout_db(match_id))
-    return single_match
+    filename = str(match_id)+'.json'
+    with open(filename, 'w') as fp:
+        json.dump(single_match, fp)
+        return FileResponse(filename)
 
 
 @app.get('/get_match_dataframe/{match_id}')
@@ -213,3 +220,6 @@ def get_heroes_winrate(hero:str):
     buf.seek(0)
 
     return StreamingResponse(buf, media_type="image/png")
+
+if __name__ == '__main__':
+    get_decomposed_match_data_wout_db(7648214204)

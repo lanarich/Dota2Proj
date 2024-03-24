@@ -29,11 +29,11 @@ headers = {"Authorization": f"Bearer {local_stratz_token}"}
 
 
 def create_query(match_id):
-    my_file = open("../graphql_parse_data.txt", "r")
+    my_file = open("graphql_parse_data.txt", "r")
     parsing_string = my_file.read()
     my_file.close()
     graph_query = {'query': '''{
-            match(id: %d) {
+            match(id: %s) {
                 %s
             }
         }''' % (match_id, parsing_string)}

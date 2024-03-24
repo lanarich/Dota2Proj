@@ -3,7 +3,7 @@ import json
 
 import pandas as pd
 
-from Dota2Proj.fastapi.api_requests.get_graphql_match import get_match_data, create_mongo_connection
+from api_requests.get_graphql_match import get_match_data, create_mongo_connection
 
 mongo_client, mongo_db = create_mongo_connection()
 
@@ -26,7 +26,7 @@ def utility_read_from_json(filename):
 
 
 def get_collection_attr(match, attr_name):
-    return match['match'][attr_name]
+    return match['data']['match'][attr_name]
 
 
 '''
@@ -48,7 +48,7 @@ def convert_match_data_into_df(current_match_data):
     radiantNetworthLeads = get_collection_attr(current_match_data, 'radiantNetworthLeads')
 
     #  читаем постройки и заполняем единицами, потому что сначала они все целы
-    tower_utils = utility_read_from_json('../creeps_buildings.json')
+    tower_utils = utility_read_from_json('creeps_buildings.json')
     for npc in tower_utils:
         df_dict[npc['name']] = 1
 
