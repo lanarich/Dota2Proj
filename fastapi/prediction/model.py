@@ -1,3 +1,5 @@
+import datetime
+
 import pandas as pd
 import joblib
 
@@ -32,6 +34,8 @@ leaver_status_map = {'NONE': 0, 'DISCONNECTED': 1, 'AFK': 2, 'DISCONNECTED_TOO_L
 
 
 def dataframe_preprocessing(dataframe, predict_items=False):
+    start = datetime.datetime.now()
+    print(start, "| info | начало | предобработка информации из датафрейма | match_id : ", dataframe.loc['id'])
     if not predict_items:
         dataframe = dataframe.drop(columns_for_drop, axis=1)
         dataframe = dataframe['didRadiantWin'].astype(int)
@@ -39,23 +43,32 @@ def dataframe_preprocessing(dataframe, predict_items=False):
     dataframe[columns_true_false_convert] = dataframe[columns_true_false_convert].astype(int)
     dataframe = dataframe.fillna(9999)
     dataframe[columns_with_leaver_status] = (dataframe[columns_with_leaver_status] != 'NONE').astype(int)
+    end = datetime.datetime.now()
+    print(end, "| info | конец | предобработка информации из датафрейма | match_id : ", dataframe.loc['id'])
     return dataframe
 
 
 def predict_csv_file(file_name):
+    start = datetime.datetime.now()
+    print(start, "| info | начало | предсказание csv файла")
     best_model = joblib.load('random_forest_calibrated.h5')
     model_features = best_model.feature_names_in_
     pred_df = pd.read_csv(file_name)
     pred_df = pred_df[model_features]
     converted_df = dataframe_preprocessing(pred_df, True)
     pred = best_model.predict_proba(converted_df)[:, 1]
+    end = datetime.datetime.now()
+    print(end, "| info | конец | предсказание csv файла")
     return pred
 
 
 def predict_dataframe(dataframe):
-    best_model = joblib.load('random_forest_calibrated.h5')
-    model_features = best_model.feature_names_in_
-    pred_df = dataframe[model_features]
-    converted_df = dataframe_preprocessing(pred_df, True)
-    pred = best_model.predict_proba(converted_df)[:, 1]
-    return pred
+    try:
+        best_model = joblib.load('random_forest_calibrated.h5')
+        model_features = best_model.feature_names_in_
+        pred_df = dataframe[model_features]
+        converted_df = dataframe_preprocessing(pred_df, True)
+        pred = best_model.predict_proba(converted_df)[:, 1]
+        return pred
+    except Exception as e:
+        print(e)

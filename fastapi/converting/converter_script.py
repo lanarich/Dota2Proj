@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import json
 
 import pandas as pd
@@ -26,6 +27,8 @@ def utility_read_from_json(filename):
 
 
 def get_collection_attr(match, attr_name):
+    if match is None:
+        raise Exception
     return match['data']['match'][attr_name]
 
 
@@ -35,52 +38,63 @@ def get_collection_attr(match, attr_name):
 
 
 def convert_match_data_into_df(current_match_data):
+    start = datetime.datetime.now()
+    print(start,
+          "| info | начало | конвертация матча")
     #  будущий массив всех строк матча
-    single_match_decomposition = []
-    basic_attrs = ['id', 'didRadiantWin', 'durationSeconds', 'startDateTime',
-                   'firstBloodTime', 'gameMode']
-    df_dict = {}
-    #  добавляем общие аттрибуты
-    for attr in basic_attrs:
-        df_dict[attr] = get_collection_attr(current_match_data, attr)
+    try:
+        single_match_decomposition = []
+        basic_attrs = ['id', 'didRadiantWin', 'durationSeconds', 'startDateTime',
+                       'firstBloodTime', 'gameMode']
+        df_dict = {}
+        #  добавляем общие аттрибуты
+        for attr in basic_attrs:
+            df_dict[attr] = get_collection_attr(current_match_data, attr)
 
-    #  массив, по которому будем считать количество минут
-    radiantNetworthLeads = get_collection_attr(current_match_data, 'radiantNetworthLeads')
+        #  массив, по которому будем считать количество минут
+        radiantNetworthLeads = get_collection_attr(current_match_data, 'radiantNetworthLeads')
 
-    #  читаем постройки и заполняем единицами, потому что сначала они все целы
-    tower_utils = utility_read_from_json('creeps_buildings.json')
-    for npc in tower_utils:
-        df_dict[npc['name']] = 1
+        #  читаем постройки и заполняем единицами, потому что сначала они все целы
+        tower_utils = utility_read_from_json('creeps_buildings.json')
+        for npc in tower_utils:
+            df_dict[npc['name']] = 1
 
-    #  теперь собираем статистику за каждую минуту
-    for minute in range(len(radiantNetworthLeads[2:])):
-        obj_dict = df_dict.copy()
-        #  текущая минута
-        obj_dict['currentMinute'] = minute + 1
-        minuteRadiantNetworthLead = radiantNetworthLeads[minute]
-        #  преимущество в золоте
-        obj_dict['minuteRadiantNetworthLead'] = minuteRadiantNetworthLead
-        minuteRadiantExperienceLeads = get_collection_attr(current_match_data, 'radiantExperienceLeads')[minute]
-        #  преимущество в опыте
-        obj_dict['minuteRadiantExperienceLeads'] = minuteRadiantExperienceLeads
-        minuteRadiantKills = get_collection_attr(current_match_data, 'radiantKills')[minute]
-        #  количество убийств свет
-        obj_dict['minuteRadiantKills'] = minuteRadiantKills
-        minuteDireKills = get_collection_attr(current_match_data, 'direKills')[minute]
-        #  количество убийств тьма
-        obj_dict['minuteDireKills'] = minuteDireKills
-        #  функция, собирающая инфу по каждому игроку
-        get_players_data(current_match_data, minute, obj_dict)
-        #  читаем сломанные постройки
+        #  теперь собираем статистику за каждую минуту
+        for minute in range(len(radiantNetworthLeads[2:])):
+            obj_dict = df_dict.copy()
+            #  текущая минута
+            obj_dict['currentMinute'] = minute + 1
+            minuteRadiantNetworthLead = radiantNetworthLeads[minute]
+            #  преимущество в золоте
+            obj_dict['minuteRadiantNetworthLead'] = minuteRadiantNetworthLead
+            minuteRadiantExperienceLeads = get_collection_attr(current_match_data, 'radiantExperienceLeads')[minute]
+            #  преимущество в опыте
+            obj_dict['minuteRadiantExperienceLeads'] = minuteRadiantExperienceLeads
+            minuteRadiantKills = get_collection_attr(current_match_data, 'radiantKills')[minute]
+            #  количество убийств свет
+            obj_dict['minuteRadiantKills'] = minuteRadiantKills
+            minuteDireKills = get_collection_attr(current_match_data, 'direKills')[minute]
+            #  количество убийств тьма
+            obj_dict['minuteDireKills'] = minuteDireKills
+            #  функция, собирающая инфу по каждому игроку
+            get_players_data(current_match_data, minute, obj_dict)
+            #  читаем сломанные постройки
 
-        get_tower_barracks_destroy_dict(get_collection_attr(current_match_data, 'towerDeaths'),
-                                        minute, df_dict, tower_utils)
-        single_match_decomposition.append(obj_dict)
-        #update = {"$set": obj_dict}
+            get_tower_barracks_destroy_dict(get_collection_attr(current_match_data, 'towerDeaths'),
+                                            minute, df_dict, tower_utils)
+            single_match_decomposition.append(obj_dict)
+            #update = {"$set": obj_dict}
 
-        #result = dataframe_match_collection.update_one(obj_dict, update, upsert=True)
+            #result = dataframe_match_collection.update_one(obj_dict, update, upsert=True)
+            end = datetime.datetime.now()
+            print(end,
+                  "| info | конец | конвертация матча | match_id : "
+                  + str(get_collection_attr(current_match_data, 'id')) +
+                  "| успешно сконвертировано")
+        return single_match_decomposition
+    except Exception as e:
+        print(e)
 
-    return single_match_decomposition
 
 
 def get_tower_barracks_destroy_dict(arr_tower_deaths, minute, obj_dict, tower_utils):
@@ -176,6 +190,9 @@ def get_decomposed_match_data(match_id):
 
 
 def create_dataframe(converted_match_data):
+    start = datetime.datetime.now()
+    print(start, "| info | начало | создание датафрейма")
     match_df = pd.DataFrame(data=converted_match_data)
-    print(match_df)
+    end = datetime.datetime.now()
+    print(end, "| info | конец | датафрейм успешно создан")
     return match_df
