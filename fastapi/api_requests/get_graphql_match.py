@@ -1,11 +1,7 @@
-import asyncio
 import datetime
-import os
-import traceback
-
 import aiohttp
 import pymongo
-from pymongo import MongoClient, UpdateOne
+from pymongo import MongoClient
 import pymongo.errors
 
 
@@ -23,7 +19,11 @@ mongo_client, mongo_db = create_mongo_connection()
 
 full_match = mongo_db.test_match_coll
 
-local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiYjJjNjQyM2EtZjlmNS00YmI1LWI2MmUtOWRiYzAyZDc2YzQ5IiwiU3RlYW1JZCI6IjM2NzY1MzgzNCIsIm5iZiI6MTY5OTk3MjM5MCwiZXhwIjoxNzMxNTA4MzkwLCJpYXQiOjE2OTk5NzIzOTAsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.-8nipaADxb1dGUcyKm9aEKtAcE9MS_MVY0khHC3ZhfE"
+local_stratz_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.\
+    eyJTdWJqZWN0IjoiYjJjNjQyM2Et\
+    ZjlmNS00YmI1LWI2MmUtOWRiYzAyZDc2YzQ5IiwiU3RlYW1JZCI6IjM2NzY1MzgzNCIsIm5iZiI6MTY5OTk3\
+        MjM5MCwiZXhwIjoxNzMxNTA4MzkwLCJpYXQiOjE2OTk5NzIzOTAsImlzcyI6Imh0dHBzOi8vYXBpLnN0c\
+            mF0ei5jb20ifQ.-8nipaADxb1dGUcyKm9aEKtAcE9MS_MVY0khHC3ZhfE"
 
 url = 'https://api.stratz.com/graphql'
 
@@ -50,7 +50,9 @@ async def fetch_stratz(match_id):
 
             return await response.json()
     except Exception as e:
-        print(datetime.datetime.now(), ": Что то пошло не так при парсинге стратз батча")
+        print(
+            datetime.datetime.now(),
+            ": Что то пошло не так при парсинге стратз батча")
         print(e)
 
 
@@ -70,8 +72,11 @@ async def stratz_match_request(match_id):
     else:
         # проверяем матч на то что обработан стратзом
         if match['data']['match'].get('parsedDateTime') is None:
-            print(datetime.datetime.now(), ': Match[id]: ', match['data']['match'].get('id'),
-                  'not parsed by Stratz yet')
+            print(
+                datetime.datetime.now(),
+                ': Match[id]: ',
+                match['data']['match'].get('id'),
+                'not parsed by Stratz yet')
             return None
         else:
             _filter = {'_id': match['data']['match'].get('id')}
@@ -84,39 +89,47 @@ async def stratz_match_request(match_id):
                 print(result)
 
     end = datetime.datetime.now()
-    print("Матч успешно добавлен в БД, \nВремя добавления составило: ", end - start)
+    print("Матч успешно добавлен в БД, \nВремя добавления составило: ",
+          end - start)
     return match
 
 
 async def stratz_match_request_wout_db(match_id):
-        start = datetime.datetime.now()
-        print(start, "| info | начало | обработка stratz | match_id : " + str(match_id))
-        stratz_query = create_query(match_id)
-        # дожидаемся запросов
-        match = await fetch_stratz(stratz_query)
-        # проверяем данные
-        if match is None:
+    start = datetime.datetime.now()
+    print(
+        start,
+        "| info | начало | обработка stratz | match_id : " +
+        str(match_id))
+    stratz_query = create_query(match_id)
+    # дожидаемся запросов
+    match = await fetch_stratz(stratz_query)
+    # проверяем данные
+    if match is None:
+        return None
+    # проверяем конкретный матч
+    if match['data']['match'] is None:
+        print(
+            datetime.datetime.now(),
+            "| error | конец | обработка stratz | match_id : " +
+            str(match_id) +
+            "| match is None")
+        return None
+
+    else:
+        # проверяем матч на то что обработан стратзом
+        if match['data']['match'].get('parsedDateTime') is None:
+            print(
+                datetime.datetime.now(),
+                "| error | конец | обработка stratz | match_id : " +
+                str(match_id) +
+                "| match "
+                "is not parsed yet")
             return None
-        # проверяем конкретный матч
-        if match['data']['match'] is None:
-            print(datetime.datetime.now(), "| error | конец | обработка stratz | match_id : "
-                  + str(match_id) + "| match is None")
-            return None
 
-        else:
-            # проверяем матч на то что обработан стратзом
-            if match['data']['match'].get('parsedDateTime') is None:
-                print(datetime.datetime.now(),
-                      "| error | конец | обработка stratz | match_id : " + str(match_id) + "| match "
-                                                                                           "is not parsed yet")
-                return None
-
-        end = datetime.datetime.now()
-        print(end,
-              "| info | конец | обработка stratz | match_id : " + str(match_id) + "| match "
-                                                                                  "parsed successfully")
-        return match
-
+    end = datetime.datetime.now()
+    print(end, "| info | конец | обработка stratz | match_id : " +
+          str(match_id) + "| match " "parsed successfully")
+    return match
 
 
 def check_match_presence_in_db(match_id):

@@ -9,8 +9,6 @@ from utils.commands import set_commands
 from handlers import predict_items, user_mark, statistics, start
 
 
-
-
 load_dotenv()
 
 token = os.getenv('BOT_TOKEN')
@@ -21,7 +19,11 @@ bot = Bot(token=token, parse_mode='HTML')
 dp = Dispatcher()
 
 
-dp.include_routers(predict_items.router, user_mark.router_mark, statistics.router_stat, start.router_start)
+dp.include_routers(
+    predict_items.router,
+    user_mark.router_mark,
+    statistics.router_stat,
+    start.router_start)
 
 
 async def start():
