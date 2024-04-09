@@ -16,6 +16,14 @@ from catboost import CatBoostClassifier, Pool
 from util_arrays import columns_for_drop, columns_with_leaver_status, \
     columns_true_false_convert, catboost_array
 
+'''
+Данный файл включает в себя скрипты для обучения и подсчета метрик для моделей
+'''
+
+'''
+Подключаемся к монго
+'''
+
 
 def create_mongo_connection():
     try:
@@ -30,11 +38,20 @@ def create_mongo_connection():
 # mongo_client, mongo_db = create_mongo_connection()
 # dataframe_match_collection = mongo_db.dataframe_match_collection
 
+'''
+Читаем все данные для датафрейма
+'''
+
 
 def get_data_from_db(collection):
     data = list(collection.find({}))
     bd_data = pd.DataFrame(data)
     return bd_data
+
+
+'''
+Метод для чтения данных из csv файла
+'''
 
 
 def get_data_from_csv(filename):
@@ -49,17 +66,23 @@ leaver_status_map = {
     'DISCONNECTED_TOO_LONG': 3,
     'ABANDONED': 4}
 
+'''
+Предобработка данных
+'''
+
 
 def dataframe_preprocessing(dataframe, predict_items=False):
     if not predict_items:
+        #  Если мы обучаем модель, добавим таргет
         dataframe = dataframe.drop(columns_for_drop, axis=1)
         dataframe['didRadiantWin'] = dataframe['didRadiantWin'].astype(int)
     dataframe[columns_true_false_convert] = (
         dataframe[columns_true_false_convert].astype(int)
     )
     dataframe = dataframe.fillna(9999)
+    #  Для тех, кто покинул игру
     dataframe[columns_with_leaver_status] = (
-        dataframe[columns_with_leaver_status] != 'NONE').astype(int)
+            dataframe[columns_with_leaver_status] != 'NONE').astype(int)
     print("Данные были успешно прочитаны из бд")
     return dataframe
 
@@ -67,10 +90,15 @@ def dataframe_preprocessing(dataframe, predict_items=False):
 def create_train_test_split(dataframe):
     X_train, X_test, y_train, y_test = train_test_split(dataframe.drop(
         'didRadiantWin', axis=1), dataframe['didRadiantWin'],
-                                                        test_size=0.25,
-                                                        random_state=42)
+        test_size=0.25,
+        random_state=42)
     print("Данные были успешно разделены на трэйн и тест")
     return X_train, X_test, y_train, y_test
+
+
+'''
+Обучаем модель Random Forest
+'''
 
 
 def fit_random_forest(Xtrain, ytrain):
@@ -89,6 +117,11 @@ def fit_random_forest(Xtrain, ytrain):
     return best_rfc
 
 
+'''
+Предсказываем датафрейм
+'''
+
+
 def predict_dataframe(new_df, model_name, preprocessed=True):
     best_model = joblib.load(model_name)
     print("Модель была успешно загружена")
@@ -100,12 +133,22 @@ def predict_dataframe(new_df, model_name, preprocessed=True):
     return pred
 
 
+'''
+Предсказываем единичный объект
+'''
+
+
 def predict_new_object(input_object, model_name):
     best_model = joblib.load(model_name)
     print("Модель была успешно загружена")
     object_df = pd.DataFrame(input_object)
     converted_df = dataframe_preprocessing(object_df)
     return best_model.predict_proba(converted_df)
+
+
+'''
+Предсказываем переданный csv
+'''
 
 
 def predict_csv_file(file_name, model_name, is_catboost=False):
@@ -123,11 +166,18 @@ def predict_csv_file(file_name, model_name, is_catboost=False):
     return pred
 
 
+'''
+Анализируем метрики
+'''
+
+
 def analyse_metrics(pred_objects, y_true, model_name):
+    #  Подгружаем модель
     best_model = joblib.load(model_name)
+    #  Делаем предикт
     prediction = best_model.predict(pred_objects)
     y_pred_prob = best_model.predict_proba(pred_objects)[:, 1]
-
+    #  Считаем accuracy и roc_auc
     print("Accuracy score: ", accuracy_score(y_true, prediction))
     print("F1 score: ", f1_score(y_true, prediction))
 
@@ -135,6 +185,11 @@ def analyse_metrics(pred_objects, y_true, model_name):
     roc_auc = roc_auc_score(y_true, y_pred_prob)
 
     plot_roc_auc(fpr, tpr, roc_auc)
+
+
+'''
+Калибруем вероятности и строи график
+'''
 
 
 def calibrate_predict_proba(
@@ -167,6 +222,11 @@ def calibrate_predict_proba(
     plt.show()
 
 
+'''
+Выводим информацию о вероятности победы для оценки качества
+'''
+
+
 def compare_minute_probabilities(x_test, model_name):
     samples = x_test.sample(10)
     best_model = joblib.load(model_name)
@@ -186,6 +246,11 @@ def compare_minute_probabilities(x_test, model_name):
             -----------------------------------------------------")
 
 
+'''
+Выводим график roc-auc
+'''
+
+
 def plot_roc_auc(fpr, tpr, roc_auc):
     plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % roc_auc)
     # roc curve for tpr = fpr
@@ -195,6 +260,11 @@ def plot_roc_auc(fpr, tpr, roc_auc):
     plt.title('ROC Curve')
     plt.legend(loc="lower right")
     plt.show()
+
+
+'''
+Выводим матрицу ошибок
+'''
 
 
 def plot_confusion_matrix(ypred, ytest):
@@ -213,6 +283,11 @@ def plot_confusion_matrix(ypred, ytest):
     plt.show()
 
 
+'''
+Обучаем катбуст с валидационной выборкой
+'''
+
+
 def fit_catboost_model(xtrain, ytrain, xtest, ytest):
     fit_data = Pool(data=xtrain, label=ytrain, cat_features=catboost_array)
     # Создание и обучение модели с автоматической обработкой категориальных
@@ -229,6 +304,11 @@ def fit_catboost_model(xtrain, ytrain, xtest, ytest):
     joblib.dump(cat_model, 'catboost_model.h5')
 
 
+'''
+Обучаем катбуст на всех данных
+'''
+
+
 def fit_full_catboost_model(xtrain, ytrain):
     fit_data = Pool(data=xtrain, label=ytrain, cat_features=catboost_array)
     # Создание и обучение модели с автоматической обработкой категориальных
@@ -243,6 +323,11 @@ def fit_full_catboost_model(xtrain, ytrain):
     joblib.dump(cat_model, 'full_catboost_model.h5')
 
 
+'''
+Выводим важность признаков
+'''
+
+
 def plot_feature_importance(Xtrain, model_name):
     best_model = joblib.load(model_name)
     rf_d = dict(zip(Xtrain.columns, best_model.feature_importances_))
@@ -251,7 +336,11 @@ def plot_feature_importance(Xtrain, model_name):
     plt.show()
 
 
-# TODO я не успел запустить
+'''
+Выводим важность признаков с помощью shapa
+'''
+
+
 def plot_shap(Xtrain, model_name):
     best_model = joblib.load(model_name)
     shap_explain = shap.Explainer(best_model)
@@ -267,6 +356,10 @@ calibrated_random_forest_name = 'random_forest.h5'
 catboost_name = 'catboost_model.h5'
 calibrated_catboost_name = 'calibrated_catboost.h5'
 full_catboost = 'full_catboost_model.h5'
+
+'''
+Тестирование
+'''
 if __name__ == '__main__':
     # df = get_data_from_db()
     df = get_data_from_csv("input_data.csv")
