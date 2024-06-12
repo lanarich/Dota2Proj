@@ -1,0 +1,58 @@
+query {
+  heroStats {
+    heroVsHeroMatchup(heroId: {0}) {
+      advantage {
+        heroId
+        with {
+          week
+          heroId2
+          synergy # Синергия
+          winRateHeroId1
+          winRateHeroId2
+          winsAverage # Почему то разные цифры получаются, мб из за ливов или че то типо
+          matchCount # Количество матчей
+          networth #Нетворс текущего героя (heroId) в играх с героем heroId2 в одной команде
+          kills
+          deaths
+          assists
+          winCount
+          firstBloodTime
+          cs
+          dn
+          goldEarned
+          xp
+          heroDamage
+          towerDamage
+          heroHealing
+          level
+
+        }
+        vs {
+          week
+          heroId2
+          synergy # Синергия
+          winRateHeroId1
+          winRateHeroId2
+          winsAverage # Почему то разные цифры получаются, мб из за ливов или че то типо
+          matchCount # Количество матчей
+          networth #Нетворс текущего героя (heroId) в играх с героем heroId2 в одной команде
+          kills
+          deaths
+          assists
+          winCount
+          firstBloodTime
+          cs
+          dn
+          goldEarned
+          xp
+          heroDamage
+          towerDamage
+          heroHealing
+          level
+
+        }
+      }
+    }
+  }
+
+}

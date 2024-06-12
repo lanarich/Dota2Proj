@@ -1,0 +1,10 @@
+query {
+  heroStats {
+    winDay {
+      heroId
+      winCount
+      matchCount
+    }
+  }
+
+}

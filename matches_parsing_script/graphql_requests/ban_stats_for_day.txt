@@ -1,0 +1,10 @@
+query {
+  heroStats {
+    banDay(heroId: {0}) {
+      heroId
+      matchCount
+      winCount
+    }
+  }
+
+}

@@ -1,0 +1,41 @@
+query {
+  constants {
+    heroes {
+      id
+      name
+      displayName
+      shortName
+      roles {
+        roleId
+        level
+      }
+      stats {
+        attackType
+        startingArmor
+        startingMagicArmor
+        startingDamageMin
+        startingDamageMax
+        attackRate
+        attackAnimationPoint
+        attackAcquisitionRange
+        attackRange
+        primaryAttribute
+        strengthBase
+        strengthGain
+        intelligenceBase
+        intelligenceGain
+        agilityBase
+        agilityGain
+        hpRegen
+        mpRegen
+        moveSpeed
+        moveTurnRate
+        hpBarOffset
+        visionDaytimeRange
+        visionNighttimeRange
+        complexity
+        primaryAttributeEnum
+      }
+    }
+  }
+}
