@@ -6,21 +6,16 @@ from pymongo import UpdateOne
 
 from matches_parsing_script.MongoDB import MongoDBWorker
 from matches_parsing_script.StratzRequest import StratzRequest
-from matches_parsing_script.main import fetch
 import matches_parsing_script.utils as utils
 
 
 class BaseParser(StratzRequest, MongoDBWorker):
 
-    def __init__(self, large, host, port):
+    def __init__(self, query_name, host, port):
         MongoDBWorker.__init__(self, host, port)
-        self.large = large
         self.client, self.db = self.create_mongo_connection()
-        self.query = None
-        self.queries = None
-
-    def read_query(self, query_name):
         self.query = query_name
+        self.queries = None
 
     def __create_ids_queries(self, id_array):
         full_query = self.query
@@ -45,26 +40,19 @@ class BaseParser(StratzRequest, MongoDBWorker):
 
     async def create_batch_request(self, hero_ids):
         response_array = []
-        if self.large:
-            batch_index = 0
-            self.__create_ids_queries(hero_ids)
-            query_batches = list(self.__create_batches(self.queries, utils.BATCH_SIZE))
-            while batch_index < len(query_batches):
-                requests = query_batches[batch_index]
-                response = await self.stratz_api_calls(requests)
-                response_array.append(response)
-                time.sleep(1)
-                if response is not None:
-                    pass
-                batch_index += 1
-        return response_array
+        batch_index = 0
+        self.__create_ids_queries(hero_ids)
+        query_batches = list(self.__create_batches(self.queries, utils.BATCH_SIZE))
+        while batch_index < len(query_batches):
+            requests = query_batches[batch_index]
+            response = await self.stratz_api_calls(requests)
+            response_array.append(response)
+            time.sleep(1)
+            if response is not None:
+                pass
+            batch_index += 1
 
-    def print_response(self, response):
-        if response is None:
-            print('Response == None')
-            return
-        else:
-            print(response)
+        return response_array
 
     def parse_response(self, response, mode):
         result = 'Empty'
@@ -164,41 +152,35 @@ class BaseParser(StratzRequest, MongoDBWorker):
 
 async def main():
     # Получить id героев
-    heroes = BaseParser(False, 'localhost', 27017)
-    heroes.read_query(utils.hero_ids_query)
+    heroes = BaseParser(utils.hero_ids_query, 'localhost', 27017)
     hero_ids = await heroes.get_heroes_ids()
 
     # Комбинированне статы
-    combo = BaseParser(True, 'localhost', 27017)
-    combo.read_query(utils.two_heroes_stats_query)
+    combo = BaseParser(utils.two_heroes_stats_query, 'localhost', 27017)
     response = await combo.create_batch_request(hero_ids)
     combo.parse_response(response, 'heroes_matchup')
     time.sleep(1)
 
     # Парсинг статистики за неделю
-    hero_stat_for_week = BaseParser(False, 'localhost', 27017)
-    hero_stat_for_week.read_query(utils.hero_stats_query)
+    hero_stat_for_week = BaseParser(utils.hero_stats_query, 'localhost', 27017)
     response = await hero_stat_for_week.stratz_request(hero_stat_for_week.query)
     hero_stat_for_week.parse_response(response, 'hero_stats')
     time.sleep(1)
 
     # Парсинг банов за день
-    ban_ids = BaseParser(False, 'localhost', 27017)
-    ban_ids.read_query(utils.ban_query)
+    ban_ids = BaseParser(utils.ban_query, 'localhost', 27017)
     response = await ban_ids.stratz_request(ban_ids.query)
     ban_ids.parse_response(response, 'banDay')
     time.sleep(1)
 
     # Парсинг винрейта за 12 дней
-    winrate = BaseParser(False, 'localhost', 27017)
-    winrate.read_query(utils.winrate_query)
+    winrate = BaseParser(utils.winrate_query, 'localhost', 27017)
     response = await winrate.stratz_request(winrate.query)
     winrate.parse_response(response, 'winDay')
     time.sleep(1)
 
     # Базовые аттрибуты
-    attributes = BaseParser(False, 'localhost', 27017)
-    attributes.read_query(utils.hero_attributes)
+    attributes = BaseParser(utils.hero_attributes, 'localhost', 27017)
     response = await attributes.stratz_request(attributes.query)
     attributes.parse_response(response, 'hero_attrs')
     time.sleep(1)
