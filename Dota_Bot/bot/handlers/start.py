@@ -12,7 +12,7 @@ async def get_startedd_help(message: Message, bot: Bot):
         message.from_user.id,
         "Доброго времени суток \n"
         "Это бот, который содержит в себе ML модель \n\n\n",
-        reply_markup=predict_item_keyboard,
+        reply_markup=predict_item_keyboard(),
     )
 
 
@@ -34,6 +34,6 @@ async def get_started(message: Message, bot: Bot):
     await bot.send_message(
         message.from_user.id,
         text,
-        reply_markup=predict_item_keyboard,
+        reply_markup=predict_item_keyboard(),
         disable_web_page_preview=True,
     )
