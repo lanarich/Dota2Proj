@@ -1,4 +1,4 @@
-# d2ds
+# 🔮 Dota 2 Oracle Bot 🔮
 master project about data science and dota2
 
 ### In master branch we got telegram bot for win probability
